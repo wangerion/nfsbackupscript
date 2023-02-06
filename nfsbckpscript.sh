@@ -5,14 +5,15 @@ current_date=$(date +%Y-%m-%d)
 nfs_var=( $(mount -l | grep nfs | awk '{print $3}') )
 #nfs_var=("/dba" "/dba2" "/backup")
 declare -p nfs_var
+excluded_nfs=/backup
 
 #If the backup mountpoint is mounted we can start the rsync process
-if mountpoint -q /backup;
+if mountpoint -q $excluded_nfs;
 then
     #Iterating over the mount points in the list provided.
     for value in "${nfs_var[@]}"
     do
-        if [[ $value != /backup ]]
+        if [[ $value != $excluded_nfs ]]
         then
             rsync -auP $value/ /backup/$value
             #if the last exit code was not eq to 0 then try again the rsync process
