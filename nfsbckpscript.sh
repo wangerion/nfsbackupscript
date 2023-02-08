@@ -1,30 +1,52 @@
 #!/bin/bash
 
 truncate -s 0 errors.log
-current_date=$(date +%Y-%m-%d)
-nfs_var=( $(mount -l | grep nfs | awk '{print $3}') )
-#nfs_var=("/dba" "/dba2" "/backup")
-declare -p nfs_var
+
+mount_checker () {
+    if mountpoint -q "$1";
+    then
+        return 0
+    else
+        mount "$1"
+        if mountpoint -q "$1";
+        then
+            echo "NFS $1 succesfully mounted." >> errors.log
+            return 0
+        fi
+        echo "NFS $1 is not mounted." >> errors.log
+        return 1
+    fi
+}
+
+current_date=$(date +%d-%m-%Y)
+#nfs_var=( $(mount -l | grep nfs | awk '{print $3}') )
+nfs_var=("/dba" "/dba2" "/backup")
+#declare -p nfs_var
 excluded_nfs=/backup
 
 #If the backup mountpoint is mounted we can start the rsync process
-if mountpoint -q $excluded_nfs;
+if mount_checker $excluded_nfs;
 then
     #Iterating over the mount points in the list provided.
     for value in "${nfs_var[@]}"
     do
-        if [[ $value != $excluded_nfs ]]
+        if [[ $value != "$excluded_nfs" ]]
         then
-            rsync -auP $value/ /backup/$value
-            #if the last exit code was not eq to 0 then try again the rsync process
-            if [ "$?" -ne "0" ]
+            if mount_checker "$value";
             then
-                rsync -avuP $value/ /backup/$value 2>> errors.log
-                echo "Script ran once more for $value" >> errors.log
+                rsync -au $value/ /backup/$value --dry-run
+                #if the last exit code was not eq to 0 then try again the rsync process
+                if [ "$?" -ne "0" ]
+                then
+                    rsync -au $value/ /backup/$value --dry-run 2>> errors.log
+                    echo "Script ran once more for $value" >> errors.log
+                fi
             fi
         fi
     done
-else
-    mountpoint /mnt/backup &>> errors.log
 fi
-echo "Kindly look at the attached" | mail -s "NFSbackup $current_date" user@example.com -A errors.log
+#Size is not > 0 bytes
+if [[ ! -s "errors.log" ]]
+then
+    echo "Kindly look at the attached" | mail -s "$current_date" user@example.com -A errors.log
+fi
