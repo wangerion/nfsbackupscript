@@ -45,8 +45,8 @@ then
         fi
     done
 fi
-#Size is not > 0 bytes
-if [[ ! -s "errors.log" ]]
+#Size is > 0 bytes
+if [[ -s "errors.log" ]]
 then
     echo "Kindly look at the attached" | mail -s "$current_date" user@example.com -A errors.log
 fi
