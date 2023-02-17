@@ -1,6 +1,7 @@
 #!/bin/bash
 
 truncate -s 0 errors.log
+truncate -s 0 output.log
 
 mount_checker () {
     if mountpoint -q "$1";
@@ -34,11 +35,11 @@ then
         then
             if mount_checker "$value";
             then
-                rsync -au $value/ /backup/$value --dry-run
+                rsync -auP $value/ $excluded_nfs/$value --dry-run &>> output.log
                 #if the last exit code was not eq to 0 then try again the rsync process
                 if [ "$?" -ne "0" ]
                 then
-                    rsync -au $value/ /backup/$value --dry-run 2>> errors.log
+                    rsync -auP $value/ $excluded_nfs/$value --dry-run 2>> errors.log
                     echo "Script ran once more for $value" >> errors.log
                 fi
             fi
