@@ -1,7 +1,8 @@
 #!/bin/bash
 
-truncate -s 0 errors.log
-truncate -s 0 output.log
+#You can leave these as comments if you wish to implement logrotate for the output of this script.
+#truncate -s 0 *errors.log
+#truncate -s 0 *output.log
 
 mount_checker () {
     if mountpoint -q "$1";
@@ -11,10 +12,10 @@ mount_checker () {
         mount "$1"
         if mountpoint -q "$1";
         then
-            echo "NFS $1 succesfully mounted." >> errors.log
+            echo "NFS $1 succesfully mounted." >> "$current_date"_errors.log
             return 0
         fi
-        echo "NFS $1 is not mounted." >> errors.log
+        echo "NFS $1 is not mounted." >> "$current_date"_errors.log
         return 1
     fi
 }
@@ -35,19 +36,19 @@ then
         then
             if mount_checker "$value";
             then
-                rsync -auP $value/ $excluded_nfs/$value --dry-run &>> output.log
+                rsync -auvPq "$value"/ $excluded_nfs/"$value" --dry-run &>> "$current_date"_output.log
                 #if the last exit code was not eq to 0 then try again the rsync process
                 if [ "$?" -ne "0" ]
                 then
-                    rsync -auP $value/ $excluded_nfs/$value --dry-run 2>> errors.log
-                    echo "Script ran once more for $value" >> errors.log
+                    rsync -auvPq "$value"/ $excluded_nfs/"$value" --dry-run 2>> "$current_date"_errors.log
+                    echo "Script ran once more for $value" >> "$current_date"_errors.log
                 fi
             fi
         fi
     done
 fi
 #Size is > 0 bytes
-if [[ -s "errors.log" ]]
+if [[ -s "$current_date"_errors.log ]]
 then
-    echo "Kindly look at the attached" | mail -s "$current_date" user@example.com -A errors.log
+    echo "Take a look at the attached." | mail -s "$current_date" user@example.com -A "$current_date"_errors.log
 fi
